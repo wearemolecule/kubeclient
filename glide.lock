@@ -1,0 +1,17 @@
+hash: 90f031b28cf21de08f74d99f45b40321df3312e10989badbbd03d5556d612306
+updated: 2016-03-09T11:19:12.822990455-06:00
+imports:
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: golang.org/x/build
+  version: 59077b03e8bc6f8b46181f2fd117c8fa4be1b3ce
+  subpackages:
+  - kubernetes/api
+- name: golang.org/x/net
+  version: 3e5cd1ed149001198e582f9d3f5bfd564cde2896
+  subpackages:
+  - context
+  - context/ctxhttp
+- name: speter.net/go/exp/math/dec/inf
+  version: 42ca6cd68aa922bc3f32f1e056e61b65945d9ad7
+devImports: []

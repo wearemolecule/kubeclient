@@ -1,0 +1,8 @@
+package: github.com/wearemolecule/kubeclient
+import:
+- package: golang.org/x/build
+  subpackages:
+  - kubernetes/api
+- package: golang.org/x/net
+  subpackages:
+  - context
