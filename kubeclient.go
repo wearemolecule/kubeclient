@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package kubernetes contains a minimal client for the Kubernetes API.
-package kube
+package kubeclient
 
 import (
 	"crypto/tls"
