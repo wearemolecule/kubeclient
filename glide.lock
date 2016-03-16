@@ -1,48 +1,36 @@
 hash: 90f031b28cf21de08f74d99f45b40321df3312e10989badbbd03d5556d612306
-updated: 2016-03-09T16:59:32.541896551-06:00
+updated: 2016-03-16T17:55:39.379082122-05:00
 imports:
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
-  repo: https://github.com/golang/glog
 - name: github.com/golang/protobuf
-  version: b9504f23731d0b61ccfff7370a161d6c857ca00d
-  repo: https://github.com/golang/protobuf
+  version: 99511271042a09d1e01baea8781caa5210fec66e
 - name: go4.org
-  version: 40a0492aa096a3be30c750c4e2216de52a6cf2e3
-  repo: https://go4.org
+  version: 03efcb870d84809319ea509714dd6d19a1498483
 - name: golang.org/x/build
   version: 59077b03e8bc6f8b46181f2fd117c8fa4be1b3ce
   subpackages:
   - kubernetes/api
 - name: golang.org/x/crypto
-  version: 5dc8cb4b8a8eb076cbb5a06bc3b8682c15bdbbd3
-  repo: https://golang.org/x/crypto
+  version: 6025851c7c2bf210daf74d22300c699b16541847
 - name: golang.org/x/net
   version: 3e5cd1ed149001198e582f9d3f5bfd564cde2896
   subpackages:
   - context
 - name: golang.org/x/oauth2
   version: 045497edb6234273d67dbc25da3f2ddbc4c4cacf
-  repo: https://golang.org/x/oauth2
 - name: golang.org/x/text
-  version: a71fd10341b064c10f4a81ceac72bcf70f26ea34
-  repo: https://golang.org/x/text
+  version: 1b466db55e0ba5d56ef5315c728216b42f796491
 - name: golang.org/x/tools
-  version: 093d7650abf0a26882924de03a6c840a00356572
-  repo: https://golang.org/x/tools
+  version: 758728c4b28cfbac299730969ef8f655c4761283
 - name: google.golang.org/api
-  version: e61f6e00cdf8b78313641288c50f6e2d4e3d749c
-  repo: https://google.golang.org/api
+  version: fceeaa645c4015c833842e6ed6052b2dda667079
 - name: google.golang.org/appengine
   version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
-  repo: https://google.golang.org/appengine
 - name: google.golang.org/cloud
-  version: 81286d291d92a0db53c4e9f5cff873d5781896d8
-  repo: https://google.golang.org/cloud
+  version: 5ff67fe23b1ba3ed2135491d9bb2ca087c84bfde
 - name: google.golang.org/grpc
-  version: 986912c9070a060e59e0f28ac7c87f89f72b9388
-  repo: https://google.golang.org/grpc
+  version: 75cc4514281ae1846a64941c8acd478855da61e5
 - name: speter.net/go/exp/math/dec/inf
   version: 42ca6cd68aa922bc3f32f1e056e61b65945d9ad7
-  repo: https://speter.net/go/exp/math/dec/inf
 devImports: []
