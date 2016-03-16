@@ -18,40 +18,30 @@ const (
 	replicationControllerPath  = apiPrefix + "/namespaces/%s/replicationcontrollers/%s"
 )
 
-func (c *Client) ReplicationControllerList(ctx context.Context, namespace, label string) ([]api.ReplicationController, error) {
-	var replicationControllers []api.ReplicationController
-	replicationControllerURL, err := url.Parse(c.replicationControllersURL(namespace))
-	if err != nil {
-		return replicationControllers, err
+func (c *Client) CreateReplicationController(ctx context.Context,
+	rc *api.ReplicationController) (*api.ReplicationController, error) {
+
+	var rcJSON bytes.Buffer
+	if err := json.NewEncoder(&rcJSON).Encode(rc); err != nil {
+		return nil, fmt.Errorf("failed to encode rc in json: %v", err)
 	}
 
-	values := url.Values{}
-	values.Set("labelSelector", label)
-	replicationControllerURL.RawQuery = values.Encode()
-
-	url := replicationControllerURL.String()
-	req, err := http.NewRequest("GET", url, nil)
+	apiResult, err := CreateKubeResource(ctx, &ReplicationControllerResource{c.Host, rc.Namespace, ""}, rcJSON, c.Client)
 	if err != nil {
-		return replicationControllers, fmt.Errorf("failed to create request: GET %q : %v", url, err)
-	}
-	res, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return replicationControllers, fmt.Errorf("failed to make request: GET %q: %v", url, err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return replicationControllers, fmt.Errorf("failed to read response body: GET %q: %v", url, err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return replicationControllers, fmt.Errorf("http error %d GET %q: %q: %v", res.StatusCode, url, string(body), err)
-	}
-	var replicationControllerList api.ReplicationControllerList
-	if err := json.Unmarshal(body, &replicationControllerList); err != nil {
-		return replicationControllers, fmt.Errorf("failed to decode rc resources: %v", err)
+		return nil, fmt.Errorf("Create failed: %v", err)
 	}
 
-	return replicationControllerList.Items, nil
+	var rcResult api.ReplicationController
+	if err := json.Unmarshal(apiResult, &rcResult); err != nil {
+		return nil, fmt.Errorf("failed to decode rc resources: %v", err)
+	}
+
+	return &rcResult, nil
+}
+
+func (c *Client) DeleteReplicationController(ctx context.Context, namespace, replicationControllerName string) error {
+	url := c.replicationControllerURL(namespace, replicationControllerName)
+	return DeleteKubeResource(ctx, url, c.Client)
 }
 
 func (c *Client) UpdateReplicationController(ctx context.Context, namespace, name, image, version string) error {
@@ -90,10 +80,40 @@ func (c *Client) UpdateReplicationController(ctx context.Context, namespace, nam
 	return nil
 }
 
+func (c *Client) ReplicationControllerList(ctx context.Context, namespace, label string) ([]api.ReplicationController, error) {
+	var replicationControllers []api.ReplicationController
+
+	apiResult, err := ListKubeResources(ctx, &ReplicationControllerResource{c.Host, namespace, label}, c.Client)
+	if err != nil {
+		return replicationControllers, fmt.Errorf("Resource List failed: %v", err)
+	}
+
+	var replicationControllerList api.ReplicationControllerList
+	if err := json.Unmarshal(apiResult, &replicationControllerList); err != nil {
+		return replicationControllers, fmt.Errorf("failed to decode rc resources: %v", err)
+	}
+
+	return replicationControllerList.Items, nil
+}
+
 func (c *Client) replicationControllerURL(namespace, name string) string {
 	return c.Host + fmt.Sprintf(replicationControllerPath, namespace, name)
 }
 
-func (c *Client) replicationControllersURL(namespace string) string {
-	return c.Host + fmt.Sprintf(replicationControllersPath, namespace)
+type ReplicationControllerResource struct {
+	Host      string
+	Namespace string
+	Label     string
+}
+
+func (rc *ReplicationControllerResource) KubeResourcesURL() string {
+	return rc.Host + fmt.Sprintf(replicationControllersPath, rc.Namespace)
+}
+
+func (rc *ReplicationControllerResource) KubeResourceNamespace() string {
+	return rc.Namespace
+}
+
+func (rc *ReplicationControllerResource) KubeResourceLabel() string {
+	return rc.Label
 }
