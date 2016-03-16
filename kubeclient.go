@@ -13,9 +13,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 const (
@@ -23,9 +20,8 @@ const (
 )
 
 type Client struct {
-	Host string
-
-	*http.Client
+	Host   string
+	Client *http.Client
 }
 
 func GetKubeClientFromEnv() (*Client, error) {
@@ -96,25 +92,4 @@ func rootCertPool(caData []byte) *x509.CertPool {
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(caData)
 	return certPool
-}
-
-// Generic delete
-func (c *Client) deleteURL(ctx context.Context, url string) error {
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: DELETE %q : %v", url, err)
-	}
-	res, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return fmt.Errorf("failed to make request: DELETE %q: %v", url, err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return fmt.Errorf("failed to read response body: DELETE %q: %v", url, err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("http error: %d DELETE %q: %q: %v", res.StatusCode, url, string(body), err)
-	}
-	return nil
 }

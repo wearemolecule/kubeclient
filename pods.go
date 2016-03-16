@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
 
 	"golang.org/x/build/kubernetes/api"
@@ -16,7 +15,8 @@ import (
 )
 
 const (
-	podPath      = apiPrefix + "/namespaces/%s/pods"
+	podsPath     = apiPrefix + "/namespaces/%s/pods"
+	podPath      = apiPrefix + "/namespaces/%s/pods/%s"
 	watchPodPath = apiPrefix + "/watch/namespaces/%s/pods/%s"
 )
 
@@ -25,25 +25,14 @@ func (c *Client) CreatePod(ctx context.Context, pod *api.Pod) (*api.Pod, error) 
 	if err := json.NewEncoder(&podJSON).Encode(pod); err != nil {
 		return nil, fmt.Errorf("failed to encode pod in json: %v", err)
 	}
-	postURL := c.podURL(pod.Namespace)
-	req, err := http.NewRequest("POST", postURL, &podJSON)
+
+	apiResult, err := CreateKubeResource(ctx, &PodResource{c.Host, pod.Namespace, ""}, podJSON, c.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: POST %q : %v", postURL, err)
+		return nil, fmt.Errorf("Create failed: %v", err)
 	}
-	res, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: POST %q: %v", postURL, err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read request body for POST %q: %v", postURL, err)
-	}
-	if res.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("http error: %d POST %q: %q: %v", res.StatusCode, postURL, string(body), err)
-	}
+
 	var podResult api.Pod
-	if err := json.Unmarshal(body, &podResult); err != nil {
+	if err := json.Unmarshal(apiResult, &podResult); err != nil {
 		return nil, fmt.Errorf("failed to decode pod resources: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -51,8 +40,7 @@ func (c *Client) CreatePod(ctx context.Context, pod *api.Pod) (*api.Pod, error) 
 
 	createdPod, err := c.AwaitPodNotPending(ctx, pod.Namespace, podResult.Name, podResult.ObjectMeta.ResourceVersion)
 	if err != nil {
-		// The pod did not leave the pending state. We should try to manually delete it before
-		// returning an error.
+		// The pod did not leave the pending state. We should try to manually delete it before returning an error.
 		c.DeletePod(context.Background(), pod.Namespace, podResult.Name)
 		return nil, fmt.Errorf("timed out waiting for pod %q to leave pending state: %v", pod.Name, err)
 	}
@@ -61,8 +49,68 @@ func (c *Client) CreatePod(ctx context.Context, pod *api.Pod) (*api.Pod, error) 
 
 // PodDelete deletes the specified Kubernetes pod.
 func (c *Client) DeletePod(ctx context.Context, namespace, podName string) error {
-	url := c.podURL(namespace) + "/" + podName
-	return c.deleteURL(ctx, url)
+	url := c.podURL(namespace, podName)
+	return DeleteKubeResource(ctx, url, c.Client)
+}
+
+func (c *Client) UpdatePod(ctx context.Context, namespace, podName, image, version string) error {
+	return nil
+}
+
+func (c *Client) PodList(ctx context.Context, namespace, label string) ([]api.Pod, error) {
+	var pods []api.Pod
+
+	apiResult, err := ListKubeResources(ctx, &PodResource{c.Host, namespace, label}, c.Client)
+	if err != nil {
+		return pods, fmt.Errorf("Resource List failed: %v", err)
+	}
+	var podList api.PodList
+	if err := json.Unmarshal(apiResult, &podList); err != nil {
+		return pods, fmt.Errorf("failed to decode pod resources: %v", err)
+	}
+
+	return podList.Items, nil
+}
+
+// PodLog retrieves the container log for the first container
+// in the pod.
+func (c *Client) PodLog(ctx context.Context, namespace, podName string) (string, error) {
+	url := c.podURL(namespace, podName) + "/log"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: GET %q : %v", url, err)
+	}
+	res, err := ctxhttp.Do(ctx, c.Client, req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make request: GET %q: %v", url, err)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: GET %q: %v", url, err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("http error %d GET %q: %q: %v", res.StatusCode, url, string(body), err)
+	}
+	return string(body), nil
+}
+
+type PodResource struct {
+	Host      string
+	Namespace string
+	Label     string
+}
+
+func (pod *PodResource) KubeResourcesURL() string {
+	return pod.Host + fmt.Sprintf(podsPath, pod.Namespace)
+}
+
+func (pod *PodResource) KubeResourceNamespace() string {
+	return pod.Namespace
+}
+
+func (pod *PodResource) KubeResourceLabel() string {
+	return pod.Label
 }
 
 // awaitPodNotPending will return a pod's status in a
@@ -177,69 +225,6 @@ func (c *Client) WatchPod(ctx context.Context, namespace, podName, podResourceVe
 	return statusChan, nil
 }
 
-// PodLog retrieves the container log for the first container
-// in the pod.
-func (c *Client) PodLog(ctx context.Context, namespace, podName string) (string, error) {
-	url := c.podURL(namespace) + "/" + podName + "/log"
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: GET %q : %v", url, err)
-	}
-	res, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return "", fmt.Errorf("failed to make request: GET %q: %v", url, err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: GET %q: %v", url, err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("http error %d GET %q: %q: %v", res.StatusCode, url, string(body), err)
-	}
-	return string(body), nil
-}
-
-func (c *Client) podURL(namespace string) string {
-	return c.Host + fmt.Sprintf(podPath, namespace)
-}
-
-func (c *Client) PodList(ctx context.Context, namespace, label string) ([]api.Pod, error) {
-	var pods []api.Pod
-	podURL, err := url.Parse(c.podURL(namespace))
-	if err != nil {
-		return pods, err
-	}
-
-	values := url.Values{}
-	values.Set("labelSelector", label)
-	podURL.RawQuery = values.Encode()
-
-	url := podURL.String()
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return pods, fmt.Errorf("failed to create request: GET %q : %v", url, err)
-	}
-	res, err := ctxhttp.Do(ctx, c.Client, req)
-	if err != nil {
-		return pods, fmt.Errorf("failed to make request: GET %q: %v", url, err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return pods, fmt.Errorf("failed to read response body: GET %q: %v", url, err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return pods, fmt.Errorf("http error %d GET %q: %q: %v", res.StatusCode, url, string(body), err)
-	}
-	var podList api.PodList
-	if err := json.Unmarshal(body, &podList); err != nil {
-		return pods, fmt.Errorf("failed to decode pod resources: %v", err)
-	}
-
-	return podList.Items, nil
-}
-
-func EmptyPod() api.Pod {
-	return api.Pod{}
+func (c *Client) podURL(namespace, name string) string {
+	return c.Host + fmt.Sprintf(podPath, namespace, name)
 }
