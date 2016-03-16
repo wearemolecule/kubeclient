@@ -102,7 +102,7 @@ type PodResource struct {
 }
 
 func (pod *PodResource) KubeResourcesURL() string {
-	return pod.Host + fmt.Sprintf(podPath, pod.Namespace)
+	return pod.Host + fmt.Sprintf(podsPath, pod.Namespace)
 }
 
 func (pod *PodResource) KubeResourceNamespace() string {

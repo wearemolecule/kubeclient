@@ -47,9 +47,8 @@ func (c *Client) CreateSecret(ctx context.Context, secret *api.Secret) (*api.Sec
 
 // DeleteSecret deletes the specified Kubernetes pod.
 func (c *Client) DeleteSecret(ctx context.Context, namespace, secretName string) error {
-	//url := c.secretURL(namespace) + "/" + secretName
-	//return c.deleteURL(ctx, url)
-	return nil
+	url := c.secretURL(namespace) + "/" + secretName
+	return DeleteKubeResource(ctx, url, c.Client)
 }
 
 func (c *Client) secretURL(namespace string) string {

@@ -63,10 +63,6 @@ func DeleteKubeResource(ctx context.Context, url string, httpClient *http.Client
 	return nil
 }
 
-func UpdateKubeResources(ctx context.Context) error {
-	return nil
-}
-
 func ListKubeResources(ctx context.Context, kubeResource KubeResource, httpClient *http.Client) ([]byte, error) {
 	var results []byte
 	kubeResourceURL, err := url.Parse(kubeResource.KubeResourcesURL())

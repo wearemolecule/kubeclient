@@ -44,7 +44,7 @@ func (c *Client) DeleteReplicationController(ctx context.Context, namespace, rep
 	return DeleteKubeResource(ctx, url, c.Client)
 }
 
-func (c *Client) UpdateReplicationController(ctx context.Context, namespace, name, image, version string) error {
+func (c *Client) UpdateReplicationControllerImage(ctx context.Context, namespace, name, image, version string) error {
 	replicationControllerURL, err := url.Parse(c.replicationControllerURL(namespace, name))
 	if err != nil {
 		return err
