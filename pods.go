@@ -28,21 +28,23 @@ func (c *Client) CreatePod(ctx context.Context, pod *api.Pod) (*api.Pod, error) 
 
 	apiResult, err := CreateKubeResource(ctx, &PodResource{c.Host, pod.Namespace, ""}, podJSON, c.Client)
 	if err != nil {
-		return nil, fmt.Errorf("Create failed: %v", err)
+		return nil, fmt.Errorf("Failed to create pod for namespace %s. \nError: %v", pod.Namespace, err)
 	}
 
 	var podResult api.Pod
 	if err := json.Unmarshal(apiResult, &podResult); err != nil {
-		return nil, fmt.Errorf("failed to decode pod resources: %v", err)
+		return nil, fmt.Errorf("Failed to decode pod resources for namespace %s. \nError: %v", pod.Namespace, err)
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+
+	// Give the pod 5 minutes to leave "Pending" state
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	createdPod, err := c.AwaitPodNotPending(ctx, pod.Namespace, podResult.Name, podResult.ObjectMeta.ResourceVersion)
 	if err != nil {
 		// The pod did not leave the pending state. We should try to manually delete it before returning an error.
 		c.DeletePod(context.Background(), pod.Namespace, podResult.Name)
-		return nil, fmt.Errorf("timed out waiting for pod %q to leave pending state: %v", pod.Name, err)
+		return nil, fmt.Errorf("Pod %s for namespace %s did not leave 'pending' state after waiting 5 minutes.\n Error: %v", podResult.Name, pod.Namespace, err)
 	}
 	return createdPod, nil
 }
