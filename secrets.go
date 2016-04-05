@@ -51,6 +51,33 @@ func (c *Client) DeleteSecret(ctx context.Context, namespace, secretName string)
 	return DeleteKubeResource(ctx, url, c.Client)
 }
 
+// GetSecret gets the specified Kubernetes pod.
+func (c *Client) GetSecret(ctx context.Context, namespace, secretName string) (*api.Secret, error) {
+	var secret api.Secret
+	url := c.secretURL(namespace) + "/" + secretName
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return &secret, fmt.Errorf("failed to create request: GET %q : %v", url, err)
+	}
+	res, err := ctxhttp.Do(ctx, c.Client, req)
+	if err != nil {
+		return &secret, fmt.Errorf("failed to make request: GET %q: %v", url, err)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		return &secret, fmt.Errorf("failed to read response body: GET %q: %v", url, err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return &secret, fmt.Errorf("http error: %d GET %q: %q: %v", res.StatusCode, url, string(body), err)
+	}
+	if err := json.Unmarshal(body, &secret); err != nil {
+		return &secret, fmt.Errorf("failed to decode secret json: %v", err)
+	}
+
+	return &secret, nil
+}
+
 func (c *Client) secretURL(namespace string) string {
 	return c.Host + fmt.Sprintf(secretPath, namespace)
 }
