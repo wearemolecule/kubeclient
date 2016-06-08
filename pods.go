@@ -74,8 +74,7 @@ func (c *Client) PodList(ctx context.Context, namespace, label string) ([]api.Po
 	return podList.Items, nil
 }
 
-// PodLog retrieves the container log for the first container
-// in the pod.
+// PodLog retrieves the container log for the first container in the pod.
 func (c *Client) PodLog(ctx context.Context, namespace, podName string) (string, error) {
 	url := c.podURL(namespace, podName) + "/log"
 	req, err := http.NewRequest("GET", url, nil)
@@ -115,13 +114,9 @@ func (pod *PodResource) KubeResourceLabel() string {
 	return pod.Label
 }
 
-// awaitPodNotPending will return a pod's status in a
-// podStatusResult when the pod is no longer in the pending
-// state.
-// The podResourceVersion is required to prevent a pod's entire
-// history from being retrieved when the watch is initiated.
-// If there is an error polling for the pod's status, or if
-// ctx.Done is closed, podStatusResult will contain an error.
+// AwaitPodNotPending will return a pod's status in a podStatusResult when the pod is no longer in the pending state.
+// The podResourceVersion is required to prevent a pod's entire history from being retrieved when the watch is initiated.
+// If there is an error polling for the pod's status, or if ctx.Done is closed, podStatusResult will contain an error.
 func (c *Client) AwaitPodNotPending(ctx context.Context, namespace, podName, podResourceVersion string) (*api.Pod, error) {
 	if podResourceVersion == "" {
 		return nil, fmt.Errorf("resourceVersion for pod %v must be provided", podName)
